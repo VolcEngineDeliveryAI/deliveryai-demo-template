@@ -7,21 +7,7 @@
     <meta name="description" content="沸点火锅点单与门店履约概念演示，非官方产品" />
     <title>沸点 · 火锅点单概念演示</title>
     <script>
-      // 防止主题闪烁 (FOUC)：在 React 渲染前同步确定初始主题
-      // 优先级：localStorage > prefers-color-scheme > 默认浅色
       (function () {
-        try {
-          var stored = localStorage.getItem('theme');
-          if (stored === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else if (stored === 'light') {
-            document.documentElement.classList.remove('dark');
-          } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.classList.add('dark');
-          }
-        } catch (e) {
-          // localStorage 不可用时静默降级，保持默认浅色
-        }
         // 同步设置初始语言到 html lang 属性
         try {
           var lang = localStorage.getItem('i18nextLng');
