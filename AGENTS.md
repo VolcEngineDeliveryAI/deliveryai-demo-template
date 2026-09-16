@@ -157,7 +157,7 @@ export function useXxx() {
 ### 1. 环境与依赖前置
 - 检查 `node_modules` 是否存在，不存在时先执行依赖安装（`npm install` / `yarn` / `pnpm install`），再做编译 / 类型检查，避免因依赖缺失而回退。
 - 在编码阶段的代码审查中，一并检查测试框架配置文件（如 `playwright.config.ts`）中已配置的 `reporter`、默认视口尺寸、超时时间、浏览器路径和 `webServer` 设置；后续执行测试时不传 `--reporter`、`--viewport` 等覆盖参数，直接使用默认配置，以一次执行同时获得控制台输出和 HTML 报告。
-- 本仓库 `playwright.config.ts` 的既定默认值（不要在命令行覆盖）：`reporter` 为 `html`（输出 `e2e-report/html`）+ `list`；视口为 Desktop Chrome 1280x720；`timeout` 30s、`expect.timeout` 10s；浏览器取 `PLAYWRIGHT_CHROMIUM_PATH` 或回退 `/opt/chromium.org/chromium/chrome`；`webServer` 自动执行 `npm run dev` 并探测 `http://localhost:5173`，本地已在跑时复用。
+- 本仓库 `playwright.config.ts` 的既定默认值（不要在命令行覆盖）：`reporter` 为 `html` + `list`；HTML 报告实际输出到默认的 `playwright-report/`（配置里的 `outputDir: 'e2e-report/html'` 在当前 Playwright 1.62.1 实测不生效，仍落到 `playwright-report/`，找报告以实际目录为准）；视口为 Desktop Chrome 1280x720；`timeout` 30s、`expect.timeout` 10s；浏览器取 `PLAYWRIGHT_CHROMIUM_PATH` 或回退 `/opt/chromium.org/chromium/chrome`；`webServer` 自动执行 `npm run dev` 并探测 `http://localhost:5173`，本地已在跑时复用。
 
 ### 2. 断言编写预防清单
 编写 E2E 测试用例时，在编码阶段提前检查并规避以下三类高频运行时问题，减少执行阶段才发现的修复往返：
@@ -167,16 +167,19 @@ export function useXxx() {
 
 ### 3. 测试执行与修复策略
 - 首轮执行全部受影响用例后，收集所有失败用例一次性批量修复，不逐个修复逐个重跑。
+- **本轮受影响的多个 spec 文件必须在单次 `npx playwright test` 命令中一起执行**（如 `npx playwright test e2e/super-spicy.spec.ts e2e/other.spec.ts`），禁止逐个文件分多次执行，避免重复启动 webServer 和浏览器。
 - 修复后使用 `--grep` / `-g` 只重新执行失败的用例验证；通过后再执行一次全量确认。
 - 全量确认通过后直接上传报告，不再重复执行。
+- **禁止为生成或定位 HTML 报告而重跑测试**；报告路径以 Section 1 既定默认值（`playwright-report/`）为准，若预期路径不存在，先检查 `playwright-report/` 等实际候选路径，确认报告确实缺失后才考虑重跑，并在交付说明中写明原因。
 - 优先运行受影响范围：改单个 spec 用 `npx playwright test <spec 文件>`；只跑某条用例配合 `-g`；不必每次全量。
 
 ### 4. 代码审查效率
 - 首轮用 `rg --files` + `rg -n` 批量定位全部相关文件（源码、测试、配置），将无依赖的文件读取合并为单次多文件并行调用，减少串行往返轮次。
 
 ### 5. 大文件与报告产物读取
-- 禁止 `cat` / `head` 直接读取大体量或内嵌资源的产物：`e2e-report/html/index.html` 等 Playwright HTML 报告内嵌 base64 截图/视频，即使 `head -100` 也可能产生 10 万级 token 并被截断；`node_modules/`、`dist/assets/`、`*.jpg`、`*.webm`、`*.zip` 同样不要直接读入上下文。
+- 禁止 `cat` / `head` 直接读取大体量或内嵌资源的产物：`playwright-report/index.html` 等 Playwright HTML 报告内嵌 base64 截图/视频，即使 `head -100` 也可能产生 10 万级 token 并被截断；`node_modules/`、`dist/assets/`、`*.jpg`、`*.webm`、`*.zip` 同样不要直接读入上下文。
 - 判定测试结果优先看 `list` reporter 的终端输出（用例名 + 通过/失败），不解析 HTML 报告。
+- **PASS/FAIL 判定以终端输出为准，不依赖 HTML 报告是否存在**；HTML 报告仅用于上传共享和人工复核，报告文件定位失败不影响结论，也不构成重跑理由。
 - 需要从 HTML/JSON 产物提取结构化信息时，用 `rg -n` 定位或写脚本（`node -e` / `python3`）解析后只输出摘要字段；截图与录屏通过 Playwright 报告或 trace viewer 查看，不读取原始字节。
 - 构建/部署日志只取关键段：用 `rg -n -C` 过滤 `error|failed|exit code`，不整段拉取。
 
