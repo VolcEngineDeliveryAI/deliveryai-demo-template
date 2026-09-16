@@ -158,6 +158,7 @@ export function useXxx() {
 - 检查 `node_modules` 是否存在，不存在时先执行依赖安装（`npm install` / `yarn` / `pnpm install`），再做编译 / 类型检查，避免因依赖缺失而回退。
 - 在编码阶段的代码审查中，一并检查测试框架配置文件（如 `playwright.config.ts`）中已配置的 `reporter`、默认视口尺寸、超时时间、浏览器路径和 `webServer` 设置；后续执行测试时不传 `--reporter`、`--viewport` 等覆盖参数，直接使用默认配置，以一次执行同时获得控制台输出和 HTML 报告。
 - 本仓库 `playwright.config.ts` 的既定默认值（不要在命令行覆盖）：`reporter` 为 `html` + `list`；HTML 报告实际输出到默认的 `playwright-report/`（配置里的 `outputDir: 'e2e-report/html'` 在当前 Playwright 1.62.1 实测不生效，仍落到 `playwright-report/`，找报告以实际目录为准）；视口为 Desktop Chrome 1280x720；`timeout` 30s、`expect.timeout` 10s；浏览器取 `PLAYWRIGHT_CHROMIUM_PATH` 或回退 `/opt/chromium.org/chromium/chrome`；`webServer` 自动执行 `npm run dev` 并探测 `http://localhost:5173`，本地已在跑时复用。
+- **禁止执行 `npx playwright install chromium`（或 `playwright install` / `--with-deps`）下载浏览器**：浏览器由运行环境预装，配置已通过 `executablePath` 指定系统 Chromium，直接运行 `npx playwright test` 即可。若报“浏览器不存在”，不要下载，先确认系统 Chrome 路径（常见 `/usr/bin/google-chrome`、`/opt/chromium.org/chromium/chrome`），再用 `PLAYWRIGHT_CHROMIUM_PATH=<chrome 路径> npx playwright test` 临时指定；该路径问题属环境配置，不通过安装浏览器解决。
 
 ### 2. 断言编写预防清单
 编写 E2E 测试用例时，在编码阶段提前检查并规避以下三类高频运行时问题，减少执行阶段才发现的修复往返：
