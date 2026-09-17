@@ -1,8 +1,8 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, ConciergeBell, LayoutDashboard, Menu as MenuIcon, ShoppingBasket } from 'lucide-react'
-import { BindTable } from '@/components/BindTable'
+import { HomeView } from '@/components/HomeView'
 import { WelcomeView } from '@/components/WelcomeView'
 import { CartPanel } from '@/components/CartPanel'
 import { CheckoutView } from '@/components/CheckoutView'
@@ -14,34 +14,52 @@ import { TopBar } from '@/components/TopBar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useElderlyMode } from '@/hooks/useElderlyMode'
+import { initialViewFromHash, useViewRoute } from '@/hooks/useViewRoute'
 import { orderReducer, initialState } from '@/state/orderReducer'
 import { products } from '@/data/menu'
 import { money } from '@/lib/utils'
 import type { AppState, ViewName } from '@/types'
 
-function createPreviewState(): AppState {
-  const preview = new URLSearchParams(window.location.search).get('preview')
-  if (preview !== 'menu') return initialState
-  const product = products[2]
-  const spec = [i18next.t('menu.option.full'), i18next.t('menu.option.original')].join(' · ')
-  return {
-    ...initialState,
-    table: 'A08',
-    view: 'menu',
-    cart: [{ uid: 'preview-item', productId: product.id, name: i18next.t(product.name), price: product.price, quantity: 1, image: product.image, spec, orderedBy: '姚乾' }],
-    lastMessage: initialState.lastMessage,
+function createInitialState(): AppState {
+  const search = new URLSearchParams(window.location.search)
+  const requestedView = initialViewFromHash()
+
+  // preview=menu：预置一桌带购物车的点餐态，供设计/截图预览
+  if (search.get('preview') === 'menu') {
+    const product = products[2]
+    const spec = [i18next.t('menu.option.full'), i18next.t('menu.option.original')].join(' · ')
+    return {
+      ...initialState,
+      table: 'A08',
+      view: 'menu',
+      cart: [{ uid: 'preview-item', productId: product.id, name: i18next.t(product.name), price: product.price, quantity: 1, image: product.image, spec, orderedBy: '姚乾' }],
+      lastMessage: initialState.lastMessage,
+    }
   }
+
+  // 深链接：直接以 #/welcome 等地址打开时，先绑定示例桌台再进入对应视图；
+  // home 无需桌台，其余流程视图（welcome/menu/order/checkout）需要桌台上下文。
+  if (requestedView && requestedView !== 'home') {
+    return { ...initialState, table: 'A08', view: requestedView }
+  }
+
+  return initialState
 }
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const [state, dispatch] = useReducer(orderReducer, initialState, createPreviewState)
+  const [state, dispatch] = useReducer(orderReducer, undefined, createInitialState)
   const { enabled: elderly, toggle: toggleElderly } = useElderlyMode()
   const [serviceOpen, setServiceOpen] = useState(false)
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const cartTotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const waitingServices = state.services.filter((service) => service.status === 'waiting').length
+
+  // 视图 ↔ URL hash 双向同步；未绑定桌台时只有 home 可达，其余地址回落到 home
+  const canView = useCallback((view: ViewName) => view === 'home' || !!state.table, [state.table])
+  const navigate = useCallback((view: ViewName) => dispatch({ type: 'SET_VIEW', view }), [])
+  useViewRoute(state.view, { onNavigate: navigate, canView })
 
   useEffect(() => {
     document.documentElement.lang = i18n.language === 'zh' ? 'zh-CN' : 'en'
@@ -68,8 +86,8 @@ export default function App() {
     dispatch({ type: 'SET_MESSAGE', message: elderly ? '已切换为常规模式' : '已切换为老人模式' })
   }
 
-  if (state.view === 'bind' || !state.table) {
-    return <BindTable onBind={(table) => dispatch({ type: 'BIND_TABLE', table })} />
+  if (state.view === 'home' || !state.table) {
+    return <HomeView onBind={(table) => dispatch({ type: 'BIND_TABLE', table })} />
   }
 
   if (state.view === 'welcome') {

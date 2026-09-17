@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Flame, Plus, Search, Sparkles, Users } from 'luci
 import { categories, products } from '@/data/menu'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { money } from '@/lib/utils'
+import { money, uid } from '@/lib/utils'
 import type { CartItem, Product } from '@/types'
 
 interface MenuViewProps {
@@ -64,7 +64,7 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
       specParts.push(t('cart.confirmed_risk'))
     }
     const spec = specParts.join(' · ') || t('menu.standard')
-    onAdd({ uid: crypto.randomUUID(), productId: selected.id, name: t(selected.name), price: Math.round(selected.price * portionFactor), quantity: 1, image: selected.image, spec, orderedBy: diner })
+    onAdd({ uid: uid(), productId: selected.id, name: t(selected.name), price: Math.round(selected.price * portionFactor), quantity: 1, image: selected.image, spec, orderedBy: diner })
     setSelected(null)
   }
 

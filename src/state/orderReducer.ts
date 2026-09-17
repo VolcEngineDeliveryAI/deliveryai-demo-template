@@ -1,8 +1,9 @@
 import i18next from 'i18next'
+import { uid } from '@/lib/utils'
 import type { AppAction, AppState } from '@/types'
 
 export const initialState: AppState = {
-  view: 'bind',
+  view: 'home',
   table: null,
   diners: ['姚乾', '林溪', '陈默'],
   cart: [],
@@ -73,7 +74,7 @@ export function orderReducer(state: AppState, action: AppAction): AppState {
       const serviceName = i18next.t(`${action.service}.name`)
       return {
         ...state,
-        services: [...state.services, { id: crypto.randomUUID(), type: serviceName, createdAt: new Date().toLocaleTimeString(localeForLanguage(i18next.language), { hour: '2-digit', minute: '2-digit' }), status: 'waiting' }],
+        services: [...state.services, { id: uid(), type: serviceName, createdAt: new Date().toLocaleTimeString(localeForLanguage(i18next.language), { hour: '2-digit', minute: '2-digit' }), status: 'waiting' }],
         lastMessage: i18next.t('message.service_called', { service: serviceName }),
       }
     }

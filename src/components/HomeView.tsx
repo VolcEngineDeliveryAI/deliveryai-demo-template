@@ -10,9 +10,9 @@ const tableOptions = [
   { code: 'D03', areaKey: 'bind.area.window', seats: 6 },
 ]
 
-interface BindTableProps { onBind: (table: string) => void }
+interface HomeViewProps { onBind: (table: string) => void }
 
-export function BindTable({ onBind }: BindTableProps) {
+export function HomeView({ onBind }: HomeViewProps) {
   const { t } = useTranslation()
   return (
     <main className="relative min-h-screen overflow-hidden bg-rice-100 paper-noise">
